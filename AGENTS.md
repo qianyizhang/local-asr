@@ -17,7 +17,7 @@ Keep changes aligned with that experimental, local-first scope. Prefer small, in
 
 - `src/local_speech_lab/`: importable Python package code.
 - `scripts/`: command-line workflows for bootstrap, environment checks, model downloads, transcription, and post-processing.
-- `configs/`: YAML configuration for models and wake-word experiments.
+- `configs/`: YAML/JSONL configuration for models, pipelines, scenarios, and wake-word experiments.
 - `resources/`: editable medical vocabulary, correction, and blacklist files.
 - `docs/glossary.md`: plain-language definitions for speech, ASR, and medical-domain terms.
 - `docs/design/`: design notes for complex tasks.
@@ -38,6 +38,7 @@ When the virtualenv is not already activated, use `.venv/bin/python`; bare `pyth
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/postprocess_transcript.py "患者需要服用二甲双瓜"
 PYTHONPATH=src .venv/bin/python scripts/asr_funasr_file.py data/audio/sample.wav
+PYTHONPATH=src .venv/bin/python scripts/benchmark_pipeline.py --config configs/pipelines/zh_medical_funasr.yaml --manifest configs/scenarios/zh_medical_smoke.jsonl
 PYTHONPATH=src .venv/bin/python scripts/download_model.py list-models
 ```
 
@@ -91,6 +92,8 @@ Expected behavior: the output should include `二甲双胍` and `糖化血红蛋
 - `resources/corrections.zh-medical.tsv` applies literal post-ASR replacements in file order.
 - `resources/blacklist.zh-medical.txt` flags terms for review; it should not delete or rewrite transcript text.
 - `strip_sensevoice_tags()` removes SenseVoice marker tokens before correction and blacklist checks.
+- Framework components live under `src/local_speech_lab/`; prefer adding swappable media, ASR, post-processing, review, or metric components there before adding one-off scripts.
+- Scenario manifests should use stable sample ids and optional `reference_text`; benchmark outputs belong under `outputs/benchmarks/`.
 
 ## Verification Guidance
 
@@ -99,6 +102,7 @@ Choose the narrowest verification that covers the change:
 - Medical text logic: run the postprocess smoke command above.
 - CLI or import changes: run `.venv/bin/python scripts/check_env.py` plus the affected script with `PYTHONPATH=src`.
 - ASR pipeline changes: use a small local audio file when available; avoid model downloads unless already present or requested.
+- Framework changes: run config/manifest loading plus `scripts/benchmark_pipeline.py` when the local sample model exists.
 - Formatting/lint-only changes: run `.venv/bin/ruff check .` if Ruff is installed.
 
 If verification requires missing models, network access, microphone access, or external audio files, say that explicitly in the final response.

@@ -61,6 +61,37 @@ Then edit:
 - `resources/blacklist.zh-medical.txt`
 - `configs/model_catalog.yaml`
 
+## Iterative Experiments
+
+The repo now has a small framework for comparing ASR pipeline changes over scenario manifests:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/benchmark_pipeline.py \
+  --config configs/pipelines/zh_medical_funasr.yaml \
+  --manifest configs/scenarios/zh_medical_smoke.jsonl
+```
+
+For one local file:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/run_pipeline.py data/audio/sample.wav \
+  --config configs/pipelines/zh_medical_funasr.yaml
+```
+
+Pipeline configs choose swappable components for media prep, ASR backend, post-processing,
+review flagging, and metrics. Scenario manifests list samples with `id`, `input_path`, optional
+`reference_text`, tags, and metadata. When references are present, benchmark summaries include
+CER/WER; otherwise they still record transcripts, flags, latency, and errors.
+
+Benchmark artifacts are written under `outputs/benchmarks/{run_id}/`:
+
+- `config_snapshot.yaml`
+- `samples.jsonl`
+- `summary.json`
+
+Use `docs/design/asr_experiment_framework.md` as the operating guide for iterative component
+improvements.
+
 ## Hugging Face Mirror
 
 For faster downloads from China, the project uses:
