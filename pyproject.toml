@@ -37,6 +37,10 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+filterwarnings = [
+  "ignore:.*SwigPy.*:DeprecationWarning",
+  "ignore:.*swigvarlink.*:DeprecationWarning",
+]
 
 [build-system]
 requires = ["setuptools>=68"]
