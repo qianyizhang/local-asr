@@ -24,6 +24,16 @@ who needs the spoken content. Ignore harmless punctuation, spacing, casing, and 
 Penalize changed facts, missing entities, wrong numbers, wrong negation, or clinically/business
 important omissions.
 
+Critical rules:
+- If one text says a finding/event/action is absent or denied and the other says it is present, mark
+  semantic_equivalent=false, useful=false, and score <= 0.2.
+- If a number, dose, frequency, time, body part, medication, diagnosis, person, location, or action
+  changes, mark semantic_equivalent=false unless the change is clearly harmless.
+- For medical or operational content, a transcript with the wrong actionable fact is not useful even
+  if most characters match.
+- Do not swap the reference and ASR transcript when explaining the judgment.
+- Judge only the two transcript lines above; do not reuse wording from these instructions as the case facts.
+
 Return only JSON with these keys:
 semantic_equivalent: boolean
 useful: boolean
@@ -45,6 +55,29 @@ def _extract_json_object(text: str) -> dict[str, Any]:
     return loaded
 
 
+def _normalized_transcript(text: str) -> str:
+    return re.sub(r"\s+", "", text)
+
+
+def exact_match_judgment(
+    provider: str,
+    model: str,
+    hypothesis: str,
+    reference: str,
+) -> TranscriptJudgment | None:
+    if _normalized_transcript(hypothesis) != _normalized_transcript(reference):
+        return None
+    return TranscriptJudgment(
+        provider=provider,
+        model=model,
+        semantic_equivalent=True,
+        useful=True,
+        score=1.0,
+        reason="Exact normalized transcript match.",
+        raw_response='{"semantic_equivalent":true,"useful":true,"score":1.0,"reason":"Exact normalized transcript match."}',
+    )
+
+
 def _judgment_from_payload(
     provider: str,
     model: str,
@@ -55,12 +88,28 @@ def _judgment_from_payload(
     return TranscriptJudgment(
         provider=provider,
         model=model,
-        semantic_equivalent=bool(payload.get("semantic_equivalent")),
-        useful=bool(payload.get("useful")),
+        semantic_equivalent=_parse_optional_bool(payload.get("semantic_equivalent")),
+        useful=_parse_optional_bool(payload.get("useful")),
         score=float(score) if score is not None else None,
-        reason=str(payload.get("reason", "")),
+        reason=str(payload.get("reason") or "Judge did not provide a reason."),
         raw_response=raw_response,
     )
+
+
+def _parse_optional_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized == "true":
+            return True
+        if normalized == "false":
+            return False
+    if isinstance(value, int | float):
+        return bool(value)
+    raise ValueError(f"Expected boolean-like judge value, got {value!r}")
 
 
 class TransformersSemanticJudge(JudgmentEvaluator):
@@ -89,6 +138,15 @@ class TransformersSemanticJudge(JudgmentEvaluator):
         return self._tokenizer, self._model
 
     def judge(self, hypothesis: str, reference: str) -> TranscriptJudgment:
+        exact_judgment = exact_match_judgment(
+            provider=self.provider,
+            model=str(self.model_path),
+            hypothesis=hypothesis,
+            reference=reference,
+        )
+        if exact_judgment is not None:
+            return exact_judgment
+
         try:
             tokenizer, model = self._load()
             prompt = build_semantic_judge_prompt(hypothesis, reference)
@@ -133,6 +191,15 @@ class LlamaCppCliSemanticJudge(JudgmentEvaluator):
         self.temperature = temperature
 
     def judge(self, hypothesis: str, reference: str) -> TranscriptJudgment:
+        exact_judgment = exact_match_judgment(
+            provider=self.provider,
+            model=str(self.model_path),
+            hypothesis=hypothesis,
+            reference=reference,
+        )
+        if exact_judgment is not None:
+            return exact_judgment
+
         prompt = build_semantic_judge_prompt(hypothesis, reference)
         try:
             process = subprocess.run(
