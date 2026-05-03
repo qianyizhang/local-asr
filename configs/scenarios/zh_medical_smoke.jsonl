@@ -1,2 +1,1 @@
-{"id":"sensevoice_zh_example","input_path":"models/funasr_sensevoice_small/iic/SenseVoiceSmall/example/zh.mp3","tags":["zh","sensevoice","smoke"],"metadata":{"source":"bundled SenseVoice sample; add reference_text when ground truth is known"}}
-
+{"id":"sensevoice_zh_example","input_path":"models/funasr_sensevoice_small/iic/SenseVoiceSmall/example/zh.mp3","reference_text":"开饭时间早上九点至下午五点","tags":["zh","sensevoice","smoke"],"metadata":{"source":"bundled SenseVoice sample"}}
