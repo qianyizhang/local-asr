@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from local_speech_lab.schemas import ReviewFlag
+from local_speech_lab.schemas import ReviewFlag, TranscriptJudgment
 
 
 class MediaPreparer(ABC):
@@ -46,5 +46,13 @@ class MetricEvaluator(ABC):
 
     @abstractmethod
     def evaluate(self, hypothesis: str, reference: str) -> dict[str, float]:
+        raise NotImplementedError
+
+
+class JudgmentEvaluator(ABC):
+    """Judge whether a transcript is semantically useful against a reference."""
+
+    @abstractmethod
+    def judge(self, hypothesis: str, reference: str) -> TranscriptJudgment:
         raise NotImplementedError
 

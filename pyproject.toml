@@ -24,6 +24,9 @@ ui = [
 vad = [
   "silero-vad>=5.1.0",
 ]
+llm = [
+  "transformers>=4.51.0",
+]
 
 [dependency-groups]
 dev = [

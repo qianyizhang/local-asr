@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-ComponentKind = Literal["media", "asr", "postprocess", "review", "metric", "writer"]
+ComponentKind = Literal["media", "asr", "postprocess", "review", "metric", "judge", "writer"]
 
 
 class ComponentSpec(BaseModel):
@@ -60,6 +60,21 @@ class ReviewFlag(BaseModel):
     value: str
 
 
+class TranscriptJudgment(BaseModel):
+    """LLM or human-style judgment for semantic transcript quality."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    model: str
+    semantic_equivalent: bool | None = None
+    useful: bool | None = None
+    score: float | None = None
+    reason: str = ""
+    raw_response: str = ""
+    error: str | None = None
+
+
 class TranscriptResult(BaseModel):
     """Pipeline output for a single sample."""
 
@@ -71,6 +86,7 @@ class TranscriptResult(BaseModel):
     text: str = ""
     reference_text: str | None = None
     flags: list[ReviewFlag] = Field(default_factory=list)
+    judgments: list[TranscriptJudgment] = Field(default_factory=list)
     metrics: dict[str, float] = Field(default_factory=dict)
     latency_seconds: float | None = None
     error: str | None = None
@@ -91,4 +107,3 @@ class BenchmarkSummary(BaseModel):
     failed: int
     metrics: dict[str, float] = Field(default_factory=dict)
     output_dir: Path
-

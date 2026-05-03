@@ -62,6 +62,7 @@ Expected behavior: the output should include `二甲双胍` and `糖化血红蛋
 - Do not run `scripts/install_zsh_defaults.sh` unless the user asks. It edits the user's `~/.zshrc`.
 - Prefer repo-local cache paths already used by the scripts: `.cache/huggingface`, `.cache/modelscope`, and `.cache/uv`.
 - The default Hugging Face endpoint is `https://hf-mirror.com`; ModelScope is also used for FunASR models.
+- Do not download Hugging Face model artifacts with raw `curl` or direct file URLs. Use Hugging Face tooling such as `huggingface_hub.snapshot_download()` with the repo-local cache/proxy setup.
 - Video transcription requires `ffmpeg`; do not silently replace this path with another media pipeline.
 
 ## Coding Conventions

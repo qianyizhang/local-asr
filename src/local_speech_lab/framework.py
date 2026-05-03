@@ -7,7 +7,14 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from local_speech_lab.components import AsrBackend, MediaPreparer, MetricEvaluator, ReviewFlagger
+from local_speech_lab.components import (
+    AsrBackend,
+    JudgmentEvaluator,
+    MediaPreparer,
+    MetricEvaluator,
+    ReviewFlagger,
+)
+from local_speech_lab.llm_judge import LlamaCppCliSemanticJudge, TransformersSemanticJudge
 from local_speech_lab.medical_text import (
     apply_corrections,
     flag_blacklisted_terms,
@@ -16,7 +23,7 @@ from local_speech_lab.medical_text import (
     strip_sensevoice_tags,
 )
 from local_speech_lab.metrics import transcript_metrics
-from local_speech_lab.schemas import ComponentSpec, ReviewFlag, TranscriptResult
+from local_speech_lab.schemas import ComponentSpec, ReviewFlag, TranscriptJudgment, TranscriptResult
 
 
 VIDEO_SUFFIXES = {".mp4", ".mov", ".mkv", ".webm", ".avi"}
@@ -161,6 +168,45 @@ def build_metric_evaluator(spec: ComponentSpec) -> MetricEvaluator:
     raise ValueError(f"Unknown metric component: {spec.name}")
 
 
+def build_judgment_evaluator(spec: ComponentSpec) -> JudgmentEvaluator:
+    if spec.name == "semantic_llm":
+        provider = str(spec.options.get("provider", "qwen"))
+        if provider in {"qwen", "gemma"}:
+            runtime = str(spec.options.get("runtime", "transformers"))
+            model_path = Path(spec.options.get("model_path", f"models/{provider}_judge"))
+            if runtime == "llama_cpp":
+                return LlamaCppCliSemanticJudge(
+                    provider=provider,
+                    model_path=model_path,
+                    executable=str(spec.options.get("executable", "llama-cli")),
+                    max_tokens=int(spec.options.get("max_new_tokens", 256)),
+                    temperature=float(spec.options.get("temperature", 0.0)),
+                )
+            if runtime != "transformers":
+                raise ValueError(f"Unknown semantic LLM judge runtime: {runtime}")
+            return TransformersSemanticJudge(
+                provider=provider,
+                model_path=model_path,
+                max_new_tokens=int(spec.options.get("max_new_tokens", 256)),
+            )
+        raise ValueError(f"Unknown semantic LLM judge provider: {provider}")
+    raise ValueError(f"Unknown judge component: {spec.name}")
+
+
+def judgment_metrics(judgment: TranscriptJudgment) -> dict[str, float]:
+    if judgment.error is not None:
+        return {}
+    prefix = f"judge_{judgment.provider}"
+    metrics: dict[str, float] = {}
+    if judgment.semantic_equivalent is not None:
+        metrics[f"{prefix}_semantic_equivalent"] = float(judgment.semantic_equivalent)
+    if judgment.useful is not None:
+        metrics[f"{prefix}_useful"] = float(judgment.useful)
+    if judgment.score is not None:
+        metrics[f"{prefix}_score"] = judgment.score
+    return metrics
+
+
 class OfflinePipeline:
     def __init__(
         self,
@@ -169,12 +215,14 @@ class OfflinePipeline:
         postprocessors: list[SenseVoiceTagCleaner | LiteralCorrectionPostprocessor],
         review_flaggers: list[ReviewFlagger],
         metric_evaluators: list[MetricEvaluator],
+        judgment_evaluators: list[JudgmentEvaluator],
     ) -> None:
         self.media_preparer = media_preparer
         self.asr_backend = asr_backend
         self.postprocessors = postprocessors
         self.review_flaggers = review_flaggers
         self.metric_evaluators = metric_evaluators
+        self.judgment_evaluators = judgment_evaluators
 
     def run_sample(
         self,
@@ -196,9 +244,14 @@ class OfflinePipeline:
                 flags.extend(flagger.flag(text))
 
             metrics: dict[str, float] = {}
+            judgments: list[TranscriptJudgment] = []
             if reference_text is not None:
                 for evaluator in self.metric_evaluators:
                     metrics.update(evaluator.evaluate(text, reference_text))
+                for evaluator in self.judgment_evaluators:
+                    judgment = evaluator.judge(text, reference_text)
+                    judgments.append(judgment)
+                    metrics.update(judgment_metrics(judgment))
 
             return TranscriptResult(
                 sample_id=sample_id,
@@ -207,6 +260,7 @@ class OfflinePipeline:
                 text=text,
                 reference_text=reference_text,
                 flags=flags,
+                judgments=judgments,
                 metrics=metrics,
                 latency_seconds=perf_counter() - started,
                 metadata=metadata or {},
@@ -238,4 +292,5 @@ def build_offline_pipeline(specs: list[ComponentSpec]) -> OfflinePipeline:
         postprocessors=[build_postprocessor(spec) for spec in specs if spec.kind == "postprocess"],
         review_flaggers=[build_review_flagger(spec) for spec in specs if spec.kind == "review"],
         metric_evaluators=[build_metric_evaluator(spec) for spec in specs if spec.kind == "metric"],
+        judgment_evaluators=[build_judgment_evaluator(spec) for spec in specs if spec.kind == "judge"],
     )

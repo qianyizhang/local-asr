@@ -108,6 +108,21 @@ This downloads one small speaker archive plus transcripts from
 and evaluates them with references. The dataset files are local runtime artifacts and are ignored
 by git.
 
+### LLM Judge Models
+
+Semantic transcript judging can use local Qwen or Gemma models:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/download_judge_model.py --preset qwen3.6
+PYTHONPATH=src .venv/bin/python scripts/download_judge_model.py --preset qwen3-small
+PYTHONPATH=src .venv/bin/python scripts/download_judge_model.py --preset gemma-small
+```
+
+The `qwen3.6` preset downloads Unsloth's `Qwen3.6-35B-A3B` GGUF quant,
+`UD-IQ4_NL`, which is a 4-bit local checkpoint around 18 GB. The full BF16 model is much larger
+and should not be used for local smoke evaluation. Gemma checkpoints on Hugging Face may require
+license acceptance and an authenticated `HF_TOKEN`.
+
 ## Hugging Face Mirror
 
 For faster downloads from China, the project uses:
