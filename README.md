@@ -92,6 +92,22 @@ Benchmark artifacts are written under `outputs/benchmarks/{run_id}/`:
 Use `docs/design/asr_experiment_framework.md` as the operating guide for iterative component
 improvements.
 
+### AISHELL Smoke Dataset
+
+To reproduce a small Mandarin benchmark without downloading the full AISHELL-1 dataset:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/download_aishell_smoke.py
+PYTHONPATH=src .venv/bin/python scripts/benchmark_pipeline.py \
+  --config configs/pipelines/zh_medical_funasr.yaml \
+  --manifest configs/scenarios/aishell_smoke.jsonl
+```
+
+This downloads one small speaker archive plus transcripts from
+`AISHELL/AISHELL-1`, extracts five utterances under `data/datasets/aishell_smoke/`,
+and evaluates them with references. The dataset files are local runtime artifacts and are ignored
+by git.
+
 ## Hugging Face Mirror
 
 For faster downloads from China, the project uses:

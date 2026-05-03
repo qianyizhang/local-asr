@@ -66,6 +66,7 @@ def run_benchmark(
             sample_id=sample.id,
             input_path=sample.input_path,
             reference_text=sample.reference_text,
+            metadata=sample.metadata,
         )
         for sample in scenario.samples
     ]

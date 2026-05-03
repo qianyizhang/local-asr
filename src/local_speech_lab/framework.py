@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from time import perf_counter
+from typing import Any
 
 from local_speech_lab.components import AsrBackend, MediaPreparer, MetricEvaluator, ReviewFlagger
 from local_speech_lab.medical_text import (
@@ -67,22 +68,28 @@ class FunAsrBackend(AsrBackend):
     def __init__(self, model: str, hotwords_path: Path | None = None) -> None:
         self.model = model
         self.hotwords_path = hotwords_path
+        self._recognizer: Any | None = None
+
+    @property
+    def recognizer(self) -> Any:
+        if self._recognizer is None:
+            from funasr import AutoModel
+
+            self._recognizer = AutoModel(
+                model=self.model,
+                trust_remote_code=True,
+                disable_update=True,
+                disable_pbar=True,
+                log_level="ERROR",
+            )
+        return self._recognizer
 
     def transcribe(self, audio_path: Path) -> str:
-        from funasr import AutoModel
-
         hotwords = ""
         if self.hotwords_path is not None:
             hotwords = " ".join(load_lines(self.hotwords_path))
 
-        recognizer = AutoModel(
-            model=self.model,
-            trust_remote_code=True,
-            disable_update=True,
-            disable_pbar=True,
-            log_level="ERROR",
-        )
-        result = recognizer.generate(input=str(audio_path), hotword=hotwords)
+        result = self.recognizer.generate(input=str(audio_path), hotword=hotwords)
         if result and isinstance(result, list):
             return str(result[0].get("text", ""))
         return ""
@@ -169,7 +176,13 @@ class OfflinePipeline:
         self.review_flaggers = review_flaggers
         self.metric_evaluators = metric_evaluators
 
-    def run_sample(self, sample_id: str, input_path: Path, reference_text: str | None = None) -> TranscriptResult:
+    def run_sample(
+        self,
+        sample_id: str,
+        input_path: Path,
+        reference_text: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> TranscriptResult:
         started = perf_counter()
         try:
             prepared_path = self.media_preparer.prepare(input_path)
@@ -196,6 +209,7 @@ class OfflinePipeline:
                 flags=flags,
                 metrics=metrics,
                 latency_seconds=perf_counter() - started,
+                metadata=metadata or {},
             )
         except Exception as exc:
             return TranscriptResult(
@@ -204,6 +218,7 @@ class OfflinePipeline:
                 reference_text=reference_text,
                 latency_seconds=perf_counter() - started,
                 error=f"{type(exc).__name__}: {exc}",
+                metadata=metadata or {},
             )
         finally:
             self.media_preparer.cleanup()
@@ -224,4 +239,3 @@ def build_offline_pipeline(specs: list[ComponentSpec]) -> OfflinePipeline:
         review_flaggers=[build_review_flagger(spec) for spec in specs if spec.kind == "review"],
         metric_evaluators=[build_metric_evaluator(spec) for spec in specs if spec.kind == "metric"],
     )
-
