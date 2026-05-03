@@ -8,8 +8,7 @@ export MODELSCOPE_CREDENTIALS_PATH="${MODELSCOPE_CREDENTIALS_PATH:-$PWD/.cache/m
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$PWD/.cache/uv}"
 
 if command -v uv >/dev/null 2>&1; then
-  uv venv --allow-existing
-  uv pip install -e ".[ui,vad]"
+  uv sync --extra ui --extra vad --group dev
 else
   python3 -m venv .venv
   . .venv/bin/activate

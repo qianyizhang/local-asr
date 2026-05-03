@@ -1,29 +1,7 @@
 name: zh_medical_funasr_qwen_small_judge
+extends: zh_medical_funasr.yaml
 description: Offline FunASR pipeline with small local Qwen3 semantic transcript judgment.
-output_dir: outputs/benchmarks
-components:
-  - kind: media
-    name: local
-    options:
-      sample_rate: 16000
-      channels: 1
-  - kind: asr
-    name: funasr
-    options:
-      model: models/funasr_sensevoice_small/iic/SenseVoiceSmall
-      hotwords_path: resources/hotwords.zh-medical.txt
-  - kind: postprocess
-    name: sensevoice_tags
-  - kind: postprocess
-    name: literal_corrections
-    options:
-      corrections_path: resources/corrections.zh-medical.tsv
-  - kind: review
-    name: blacklist
-    options:
-      blacklist_path: resources/blacklist.zh-medical.txt
-  - kind: metric
-    name: transcript
+extra_components:
   - kind: judge
     name: semantic_llm
     options:

@@ -29,35 +29,47 @@ Use Python 3.10 through 3.12.
 
 ```bash
 ./scripts/bootstrap.sh
-source .venv/bin/activate
-python scripts/check_env.py
+make check
 ```
 
-When the virtualenv is not already activated, use `.venv/bin/python`; bare `python` may not exist on the shell PATH. Set `PYTHONPATH=src` unless the package is already installed editable in the active environment:
+`uv` is a global tool, but it should manage this repo's local `.venv` from `pyproject.toml`. Prefer the `Makefile` for common workflows; it exports the repo-local uv cache and `PYTHONPATH=src`.
+
+For direct one-off script runs after bootstrap, use `uv run --no-sync` instead of calling `.venv/bin/python` directly:
 
 ```bash
-PYTHONPATH=src .venv/bin/python scripts/postprocess_transcript.py "患者需要服用二甲双瓜"
-PYTHONPATH=src .venv/bin/python scripts/asr_funasr_file.py data/audio/sample.wav
-PYTHONPATH=src .venv/bin/python scripts/benchmark_pipeline.py --config configs/pipelines/zh_medical_funasr.yaml --manifest configs/scenarios/zh_medical_smoke.jsonl
-PYTHONPATH=src .venv/bin/python scripts/download_model.py list-models
+export UV_CACHE_DIR=.cache/uv
+export PYTHONPATH=src
+uv run --no-sync --no-dev scripts/postprocess_transcript.py "患者需要服用二甲双瓜"
+uv run --no-sync --no-dev scripts/asr_funasr_file.py data/audio/sample.wav
+uv run --no-sync --no-dev scripts/benchmark_pipeline.py --config configs/pipelines/zh_medical_funasr.yaml --manifest configs/scenarios/zh_medical_smoke.jsonl
+uv run --no-sync --no-dev scripts/download_model.py list-models
+```
+
+Makefile shortcuts:
+
+```bash
+make check
+make test
+make postprocess
+make benchmark
 ```
 
 For linting after dev dependencies are installed:
 
 ```bash
-.venv/bin/ruff check .
+make lint
 ```
 
 Pytest is the main test suite:
 
 ```bash
-.venv/bin/pytest
+make test
 ```
 
 For lightweight verification of text-processing changes, use:
 
 ```bash
-PYTHONPATH=src .venv/bin/python scripts/postprocess_transcript.py "患者需要服用二甲双瓜并复查糖化血红蛋白a1c"
+make postprocess
 ```
 
 Expected behavior: the output should include `二甲双胍` and `糖化血红蛋白 HbA1c`.
@@ -67,6 +79,7 @@ Expected behavior: the output should include `二甲双胍` and `糖化血红蛋
 - Do not download large models unless the task requires it. Model downloads may use network and fill `models/` or `.cache/`.
 - Do not run `scripts/install_zsh_defaults.sh` unless the user asks. It edits the user's `~/.zshrc`.
 - Prefer repo-local cache paths already used by the scripts: `.cache/huggingface`, `.cache/modelscope`, and `.cache/uv`.
+- Prefer `uv sync` for environment updates and `uv run --no-sync` for routine one-off script runs; avoid ad hoc `pip install` or direct `.venv/bin/*` calls unless diagnosing environment issues.
 - The default Hugging Face endpoint is `https://hf-mirror.com`; ModelScope is also used for FunASR models.
 - Do not download Hugging Face model artifacts with raw `curl` or direct file URLs. Use Hugging Face tooling such as `huggingface_hub.snapshot_download()` with the repo-local cache/proxy setup.
 - Video transcription requires `ffmpeg`; do not silently replace this path with another media pipeline.
@@ -107,11 +120,11 @@ Expected behavior: the output should include `二甲双胍` and `糖化血红蛋
 Choose the narrowest verification that covers the change:
 
 - Medical text logic: run the postprocess smoke command above.
-- Unit/framework changes: run `.venv/bin/pytest`.
-- CLI or import changes: run `.venv/bin/python scripts/check_env.py` plus the affected script with `PYTHONPATH=src`.
+- Unit/framework changes: run `make test`.
+- CLI or import changes: run `make check` plus the affected script with `uv run --no-sync --no-dev`.
 - ASR pipeline changes: use a small local audio file when available; avoid model downloads unless already present or requested.
 - Framework changes: run config/manifest loading plus `scripts/benchmark_pipeline.py` when the local sample model exists.
-- Formatting/lint-only changes: run `.venv/bin/ruff check .` if Ruff is installed.
+- Formatting/lint-only changes: run `make lint`.
 
 If verification requires missing models, network access, microphone access, or external audio files, say that explicitly in the final response.
 

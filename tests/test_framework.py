@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 from local_speech_lab.benchmark import summarize_results
-from local_speech_lab.io import load_scenario_manifest
+from local_speech_lab.io import load_pipeline_config, load_scenario_manifest
 from local_speech_lab.medical_text import apply_corrections, flag_blacklisted_terms, strip_sensevoice_tags
 from local_speech_lab.metrics import character_error_rate, word_error_rate
 from local_speech_lab.schemas import PipelineConfig, ScenarioManifest, ScenarioSample, TranscriptResult
@@ -35,6 +35,22 @@ def test_load_jsonl_manifest() -> None:
     assert manifest.name == "scenario"
     assert manifest.samples[0].id == "a"
     assert manifest.samples[0].reference_text == "你好"
+
+
+def test_pipeline_config_extends_base_components() -> None:
+    config = load_pipeline_config("configs/pipelines/zh_medical_funasr_qwen_small_judge.yaml")
+
+    assert config.name == "zh_medical_funasr_qwen_small_judge"
+    assert [component.kind for component in config.components] == [
+        "media",
+        "asr",
+        "postprocess",
+        "postprocess",
+        "review",
+        "metric",
+        "judge",
+    ]
+    assert config.components[-1].options["model_path"] == "models/qwen3_0_6b"
 
 
 def test_summarize_results() -> None:
