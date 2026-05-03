@@ -1,0 +1,41 @@
+defaults:
+  huggingface_endpoint: "https://hf-mirror.com"
+  model_dir: "models"
+
+asr:
+  funasr_sensevoice_small:
+    provider: modelscope
+    model_id: iic/SenseVoiceSmall
+    purpose: Chinese multilingual ASR baseline with punctuation and rich labels.
+    notes: Good first Chinese ASR model to test before custom fine-tuning.
+
+  funasr_paraformer_zh_streaming:
+    provider: modelscope
+    model_id: iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online
+    purpose: Streaming Mandarin ASR baseline.
+    notes: Useful when latency matters.
+
+  whisper_cpp_large_v3_turbo:
+    provider: huggingface
+    model_id: ggml-org/whisper.cpp
+    purpose: Mac-native ASR baseline through whisper.cpp.
+    notes: Download ggml model artifacts from the whisper.cpp release/model docs.
+
+wake_word:
+  sherpa_onnx_kws_zh:
+    provider: github_or_huggingface
+    model_id: sherpa-onnx keyword spotting models
+    purpose: Wake-word and keyword spotting experiments.
+    notes: Configure keywords and thresholds in configs/wake_words.yaml.
+
+vad:
+  sherpa_onnx_vad:
+    provider: github_or_huggingface
+    model_id: sherpa-onnx VAD models
+    purpose: Streaming voice activity detection and endpointing.
+
+  silero_vad:
+    provider: pytorch_hub
+    model_id: snakers4/silero-vad
+    purpose: Simple local VAD baseline.
+
