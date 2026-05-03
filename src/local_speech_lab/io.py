@@ -50,6 +50,13 @@ def write_model_json(path: str | Path, model: BaseModel) -> None:
     )
 
 
+def write_model_yaml(path: str | Path, model: BaseModel) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(model.model_dump(mode="json"), handle, allow_unicode=True, sort_keys=False)
+
+
 def write_jsonl(path: str | Path, models: list[BaseModel]) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,4 +65,3 @@ def write_jsonl(path: str | Path, models: list[BaseModel]) -> None:
         for model in models
     ]
     output_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-

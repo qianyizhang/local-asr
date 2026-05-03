@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from local_speech_lab.framework import build_offline_pipeline
-from local_speech_lab.io import write_jsonl, write_model_json
+from local_speech_lab.io import write_jsonl, write_model_json, write_model_yaml
 from local_speech_lab.schemas import BenchmarkSummary, PipelineConfig, ScenarioManifest, TranscriptResult
 
 
@@ -77,8 +77,7 @@ def run_benchmark(
         output_dir=output_dir,
     )
 
-    write_model_json(output_dir / "config_snapshot.json", pipeline_config)
+    write_model_yaml(output_dir / "config_snapshot.yaml", pipeline_config)
     write_jsonl(output_dir / "samples.jsonl", results)
     write_model_json(output_dir / "summary.json", summary)
     return summary
-
