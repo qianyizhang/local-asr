@@ -48,7 +48,13 @@ For linting after dev dependencies are installed:
 .venv/bin/ruff check .
 ```
 
-There is currently no dedicated test suite. For lightweight verification of text-processing changes, use:
+Pytest is the main test suite:
+
+```bash
+.venv/bin/pytest
+```
+
+For lightweight verification of text-processing changes, use:
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/postprocess_transcript.py "患者需要服用二甲双瓜并复查糖化血红蛋白a1c"
@@ -101,6 +107,7 @@ Expected behavior: the output should include `二甲双胍` and `糖化血红蛋
 Choose the narrowest verification that covers the change:
 
 - Medical text logic: run the postprocess smoke command above.
+- Unit/framework changes: run `.venv/bin/pytest`.
 - CLI or import changes: run `.venv/bin/python scripts/check_env.py` plus the affected script with `PYTHONPATH=src`.
 - ASR pipeline changes: use a small local audio file when available; avoid model downloads unless already present or requested.
 - Framework changes: run config/manifest loading plus `scripts/benchmark_pipeline.py` when the local sample model exists.

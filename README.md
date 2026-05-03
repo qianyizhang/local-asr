@@ -123,7 +123,7 @@ The `qwen3.6` preset downloads Unsloth's `Qwen3.6-35B-A3B` GGUF quant,
 and should not be used for local smoke evaluation. Gemma checkpoints on Hugging Face may require
 license acceptance and an authenticated `HF_TOKEN`.
 
-When `models/qwen3_0_6b` is present, `python -m unittest discover -s tests` includes semantic
+When `models/qwen3_0_6b` is present, `.venv/bin/pytest` includes semantic
 judge cases where CER is low but the meaning is wrong, such as negation, dose frequency, numeric
 value, body-part, and time-of-day changes.
 
