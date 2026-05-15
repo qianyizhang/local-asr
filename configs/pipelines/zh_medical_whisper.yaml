@@ -1,0 +1,25 @@
+name: zh_medical_whisper
+description: Offline Whisper.cpp pipeline with Chinese medical resource profile.
+output_dir: outputs/benchmarks
+components:
+  - kind: media
+    name: local
+    options:
+      sample_rate: 16000
+      channels: 1
+  - kind: asr
+    name: whisper_cpp
+    options:
+      model_path: models/ggml-large-v3-turbo.bin
+      language: zh
+      threads: 4
+  - kind: postprocess
+    name: literal_corrections
+    options:
+      corrections_path: resources/corrections.zh-medical.tsv
+  - kind: review
+    name: blacklist
+    options:
+      blacklist_path: resources/blacklist.zh-medical.txt
+  - kind: metric
+    name: transcript

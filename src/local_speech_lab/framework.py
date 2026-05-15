@@ -102,6 +102,44 @@ class FunAsrBackend(AsrBackend):
         return ""
 
 
+class WhisperCppBackend(AsrBackend):
+    def __init__(
+        self,
+        model_path: Path,
+        executable: str = "whisper-cpp",
+        language: str = "zh",
+        threads: int = 4,
+    ) -> None:
+        self.model_path = model_path
+        self.executable = executable
+        self.language = language
+        self.threads = threads
+
+    def transcribe(self, audio_path: Path) -> str:
+        exe = shutil.which(self.executable)
+        if not exe:
+            raise RuntimeError(f"whisper-cpp executable '{self.executable}' not found.")
+        with tempfile.TemporaryDirectory(prefix="local-asr-whisper-") as tmpdir:
+            tmp_audio = Path(tmpdir) / audio_path.name
+            shutil.copy2(audio_path, tmp_audio)
+            subprocess.run(
+                [
+                    exe,
+                    "--model", str(self.model_path),
+                    "--file", str(tmp_audio),
+                    "--language", self.language,
+                    "--threads", str(self.threads),
+                    "--output-txt",
+                    "--no-prints",
+                ],
+                check=True,
+            )
+            txt_path = Path(tmpdir) / (audio_path.name + ".txt")
+            if txt_path.exists():
+                return txt_path.read_text(encoding="utf-8").strip()
+        return ""
+
+
 class SenseVoiceTagCleaner:
     def process(self, text: str) -> str:
         return strip_sensevoice_tags(text)
@@ -145,6 +183,13 @@ def build_asr_backend(spec: ComponentSpec) -> AsrBackend:
         model = str(spec.options["model"])
         hotwords = spec.options.get("hotwords_path")
         return FunAsrBackend(model=model, hotwords_path=Path(hotwords) if hotwords else None)
+    if spec.name == "whisper_cpp":
+        return WhisperCppBackend(
+            model_path=Path(str(spec.options["model_path"])),
+            executable=str(spec.options.get("executable", "whisper-cpp")),
+            language=str(spec.options.get("language", "zh")),
+            threads=int(spec.options.get("threads", 4)),
+        )
     raise ValueError(f"Unknown ASR component: {spec.name}")
 
 

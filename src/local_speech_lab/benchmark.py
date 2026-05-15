@@ -40,6 +40,14 @@ def summarize_results(
     if latencies:
         metrics["mean_latency_seconds"] = sum(latencies) / len(latencies)
 
+    if scenario.metric_weights:
+        total_weight = sum(scenario.metric_weights.values())
+        if total_weight > 0:
+            metrics["weighted_mean"] = (
+                sum(metrics.get(f"mean_{k}", 0.0) * w for k, w in scenario.metric_weights.items())
+                / total_weight
+            )
+
     failed = sum(1 for result in results if result.error)
     return BenchmarkSummary(
         run_id=run_id,
