@@ -49,6 +49,7 @@ class ScenarioManifest(BaseModel):
     name: str
     description: str = ""
     samples: list[ScenarioSample]
+    metric_weights: dict[str, float] = Field(default_factory=dict)
 
 
 class ReviewFlag(BaseModel):
