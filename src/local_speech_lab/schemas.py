@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 ComponentKind = Literal["media", "asr", "postprocess", "review", "metric", "judge", "writer"]
 
@@ -49,7 +48,9 @@ class ScenarioManifest(BaseModel):
     name: str
     description: str = ""
     samples: list[ScenarioSample]
-    metric_weights: dict[str, float] = Field(default_factory=dict)
+    metric_weights: dict[str, Annotated[float, Field(ge=0, allow_inf_nan=False)]] = Field(
+        default_factory=dict
+    )
 
 
 class ReviewFlag(BaseModel):
