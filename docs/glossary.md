@@ -61,3 +61,7 @@ A phrase used to activate a speech system, such as a keyword that starts listeni
 ## WER
 
 Word Error Rate. The number of word edits needed to turn a transcript into the reference text, divided by the reference word count.
+
+## Weighted Mean
+
+An average that gives each selected metric a configured relative weight. The benchmark emits it only when every metric with a positive weight has a finite mean. It does not convert metric units or whether higher or lower values are better.

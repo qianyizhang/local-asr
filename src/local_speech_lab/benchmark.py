@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from math import isfinite
 from pathlib import Path
 
 from local_speech_lab.framework import build_offline_pipeline
 from local_speech_lab.io import write_jsonl, write_model_json, write_model_yaml
-from local_speech_lab.schemas import BenchmarkSummary, PipelineConfig, ScenarioManifest, TranscriptResult
+from local_speech_lab.schemas import (
+    BenchmarkSummary,
+    PipelineConfig,
+    ScenarioManifest,
+    TranscriptResult,
+)
 
 
 def make_run_id(pipeline_name: str, scenario_name: str) -> str:
@@ -39,6 +45,23 @@ def summarize_results(
     ]
     if latencies:
         metrics["mean_latency_seconds"] = sum(latencies) / len(latencies)
+
+    weights = {
+        f"mean_{key}": weight
+        for key, weight in scenario.metric_weights.items()
+        if weight > 0
+    }
+    # An unavailable required metric must not look like a zero error rate.
+    if weights and all(key in metrics and isfinite(metrics[key]) for key in weights):
+        # Normalize before multiplying to avoid overflow with large finite weights.
+        max_weight = max(weights.values())
+        weights = {key: weight / max_weight for key, weight in weights.items()}
+        total_weight = sum(weights.values())
+        weighted_mean = sum(
+            metrics[key] * (weight / total_weight) for key, weight in weights.items()
+        )
+        if isfinite(weighted_mean):
+            metrics["weighted_mean"] = weighted_mean
 
     failed = sum(1 for result in results if result.error)
     return BenchmarkSummary(

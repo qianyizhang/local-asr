@@ -3,7 +3,10 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from local_speech_lab.benchmark import summarize_results
+from local_speech_lab.framework import WhisperCppBackend
 from local_speech_lab.io import load_pipeline_config, load_scenario_manifest
 from local_speech_lab.medical_text import apply_corrections, flag_blacklisted_terms, strip_sensevoice_tags
 from local_speech_lab.metrics import character_error_rate, word_error_rate
@@ -80,3 +83,49 @@ def test_summarize_results() -> None:
     assert summary.metrics["mean_cer"] == 0.25
     assert summary.metrics["mean_wer"] == 0.5
     assert summary.metrics["mean_latency_seconds"] == 2.0
+
+
+def test_summarize_results_with_metric_weights() -> None:
+    config = PipelineConfig(name="pipe", components=[])
+    scenario = ScenarioManifest(
+        name="scenario",
+        samples=[ScenarioSample(id="a", input_path=Path("a.wav"))],
+        metric_weights={"cer": 2.0, "wer": 1.0},
+    )
+    result = TranscriptResult(
+        sample_id="a",
+        input_path=Path("a.wav"),
+        text="你好",
+        metrics={"cer": 0.25, "wer": 0.5},
+        latency_seconds=1.0,
+    )
+    summary = summarize_results(
+        run_id="run",
+        pipeline_config=config,
+        scenario=scenario,
+        results=[result],
+        output_dir=Path("outputs/benchmarks/run"),
+    )
+    # weighted_mean = (2.0*0.25 + 1.0*0.5) / 3.0 = 1.0/3.0
+    assert "weighted_mean" in summary.metrics
+    assert abs(summary.metrics["weighted_mean"] - (2.0 * 0.25 + 1.0 * 0.5) / 3.0) < 1e-9
+    assert summary.metrics["mean_cer"] == 0.25
+    assert summary.metrics["mean_wer"] == 0.5
+
+
+def test_whisper_cpp_backend_missing_executable() -> None:
+    backend = WhisperCppBackend(
+        model_path=Path("models/ggml-large-v3-turbo.bin"),
+        executable="__nonexistent_whisper_cpp__",
+    )
+    with pytest.raises(RuntimeError, match="not found"):
+        backend.transcribe(Path("data/audio/test.wav"))
+
+
+def test_whisper_pipeline_config_loads() -> None:
+    config = load_pipeline_config("configs/pipelines/zh_medical_whisper.yaml")
+    assert config.name == "zh_medical_whisper"
+    asr = next(c for c in config.components if c.kind == "asr")
+    assert asr.name == "whisper_cpp"
+    assert asr.options["model_path"] == "models/ggml-large-v3-turbo.bin"
+    assert "sensevoice_tags" not in [c.name for c in config.components]

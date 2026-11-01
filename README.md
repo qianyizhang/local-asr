@@ -83,6 +83,25 @@ review flagging, and metrics. Scenario manifests list samples with `id`, `input_
 `reference_text`, tags, and metadata. When references are present, benchmark summaries include
 CER/WER; otherwise they still record transcripts, flags, latency, and errors.
 
+YAML scenario manifests can set `metric_weights`, for example `{cer: 2.0, wer: 1.0}`,
+to add a `weighted_mean` of the corresponding `mean_cer` and `mean_wer`. Use metric
+names without the `mean_` prefix; `latency_seconds` also selects the latency mean.
+Weights must be finite and nonnegative. Zero disables a metric; an empty mapping or
+all-zero weights disables the weighted score.
+
+Every positive-weight metric must have a finite mean, or `weighted_mean` is omitted.
+This includes unknown keys, missing metrics, and nonfinite values or arithmetic
+overflow; missing values are never replaced with zero or dropped to reweight the
+remaining metrics. All-failed or empty runs therefore have no weighted score, and
+unreferenced runs have no CER/WER score. Raw results, per-metric means, and failure
+counts are preserved. Each mean still uses the successful samples that reported
+that metric, so means may cover different samples and do not penalize failures.
+
+The weighted mean is arithmetic, with no conversion of units or metric direction.
+Finite signed metrics are allowed. Lower CER/WER is better, while higher semantic
+judge scores are better; choose compatible metrics and interpret the score together
+with its component means, sample coverage, and failure counts.
+
 Benchmark artifacts are written under `outputs/benchmarks/{run_id}/`:
 
 - `config_snapshot.yaml`
